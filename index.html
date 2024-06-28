@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Best Dad Joke Generator Ever</title>
+    <link rel="manifest" href="manifest.json">
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(function(registration) {
+                    console.log('Service Worker registered with scope:', registration.scope);
+                }).catch(function(error) {
+                    console.log('Service Worker registration failed:', error);
+                });
+        }
+    </script>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: Arial, sans-serif;
+            height: 100vh;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        #jokeContainer {
+            font-size: 1.2em;
+            margin: 20px;
+            padding: 10px;
+            border: 2px solid #ccc;
+            border-radius: 10px;
+            max-width: 500px;
+            text-align: center;
+            background-color: #f9f9f9;
+        }
+        button {
+            display: inline-block;
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #28a745;
+            color: white;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>The Best Dad Joke Generator Ever</h1>
+    <div id="jokeContainer">
+        Click the button to get a random dad joke!
+    </div>
+    <button id="jokeButton" onclick="getRandomDadJoke()">Get a Dad Joke</button>
+    <div id="feedbackContainer" class="hidden">
+        <p>Did you like the joke?</p>
+        <button onclick="handleFeedback('yes')">YES</button>
+        <button onclick="handleFeedback('no')">NO</button>
+    </div>
+
+    <script>
+        const jokes = new Set();
+        let jokeCounter = 0;
+        const maxJokes = 100;
+
+        function saveState() {
+            localStorage.setItem('jokeCounter', jokeCounter);
+            localStorage.setItem('lastJokeDate', new Date().toISOString());
+        }
+
+        function loadState() {
+            jokeCounter = parseInt(localStorage.getItem('jokeCounter')) || 0;
+            const lastJokeDate = new Date(localStorage.getItem('lastJokeDate'));
+            const currentDate = new Date();
+
+            if (currentDate.getDate() !== lastJokeDate.getDate() || currentDate.getMonth() !== lastJokeDate.getMonth() || currentDate.getFullYear() !== lastJokeDate.getFullYear()) {
+                jokeCounter = 0;
+            }
+        }
+
+        async function getRandomDadJoke() {
+            if (jokeCounter >= maxJokes) {
+                document.getElementById('jokeContainer').innerText = 'Jokes on you, you can get this button unlocked tomorrow!';
+                document.getElementById('jokeButton').disabled = true;
+                return;
+            }
+
+            try {
+                const response = await fetch('https://icanhazdadjoke.com/', {
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                const data = await response.json();
+
+                if (jokes.has(data.joke)) {
+                    getRandomDadJoke(); // Try again if the joke was already shown
+                } else {
+                    jokes.add(data.joke);
+                    document.getElementById('jokeContainer').innerText = data.joke;
+                    jokeCounter++;
+                    saveState();
+                    document.getElementById('feedbackContainer').classList.remove('hidden');
+                }
+            } catch (error) {
+                document.getElementById('jokeContainer').innerText = 'Oops! Something went wrong. Please try again.';
+                console.error('Error fetching the joke:', error);
+            }
+        }
+
+        function handleFeedback(response) {
+            if (response === 'yes') {
+                jokeCounter = Math.min(jokeCounter + 100, maxJokes);
+            } else {
+                jokeCounter = maxJokes;
+                document.getElementById('jokeContainer').innerText = 'Jokes on you, you can get this button unlocked tomorrow!';
+                document.getElementById('jokeButton').disabled = true;
+            }
+            saveState();
+            document.getElementById('feedbackContainer').classList.add('hidden');
+        }
+
+        loadState();
+    </script>
+</body>
+</html>
